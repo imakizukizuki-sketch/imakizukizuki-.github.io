@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ご交際おめでとう</title>
+<style>
+  :root {
+    --bg: #fdf6f4;
+    --main: #3a2a2e;
+    --sub: #a8707c;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1f1619;
+      --main: #f6e9ec;
+      --sub: #d9a3af;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1f1619;
+    --main: #f6e9ec;
+    --sub: #d9a3af;
+  }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+    padding: 0 1rem;
+    box-sizing: border-box;
+  }
+  h1 {
+    margin: 0;
+    color: var(--main);
+    font-size: clamp(1.8rem, 8vw, 4rem);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+  }
+  p {
+    margin: 1.2em 0 0;
+    color: var(--sub);
+    font-size: clamp(1rem, 4vw, 1.6rem);
+    letter-spacing: 0.2em;
+  }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+  canvas#b { z-index: 0; }
+  h1, p { position: relative; z-index: 1; }
+</style>
+</head>
+<body>
+  <h1>ご交際おめでとう</h1>
+  <p>末永くお幸せに</p>
+<canvas id="b"></canvas>
+<canvas id="c"></canvas>
+<script>
+(function () {
+  var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  var bv = document.getElementById('b'), bctx = bv.getContext('2d');
+  var W, H, parts = [], balloons = [], running = false;
+  var colors = ['#f4a6b7', '#f7d154', '#7ec8e3', '#a8e6a1', '#c9a0f0', '#ff8a65'];
+  function resize() {
+    var d = window.devicePixelRatio || 1;
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W * d; cv.height = H * d;
+    bv.width = W * d; bv.height = H * d;
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    bctx.setTransform(d, 0, 0, d, 0, 0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function burst(x, angle, n) {
+    for (var i = 0; i < (n || 90); i++) {
+      var a = angle + (Math.random() - 0.5) * 0.9;
+      var s = 9 + Math.random() * 13;
+      parts.push({
+        x: x, y: H,
+        vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+        w: 6 + Math.random() * 6, h: 3 + Math.random() * 4,
+        r: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.4,
+        c: colors[(Math.random() * colors.length) | 0],
+        life: 1
+      });
+    }
+    if (!running) { running = true; requestAnimationFrame(tick); }
+  }
+
+  function tick() {
+    ctx.clearRect(0, 0, W, H);
+    parts = parts.filter(function (p) { return p.life > 0 && p.y < H + 40; });
+    parts.forEach(function (p) {
+      var d = p.d || 0.985, g = p.g || 0.35;
+      p.vx *= d; p.vy = p.vy * d + g;
+      p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      if (p.vy > 0) p.life -= (p.l || 0.006);
+      ctx.save();
+      ctx.globalAlpha = Math.max(p.life, 0);
+      ctx.translate(p.x, p.y); ctx.rotate(p.r);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    });
+    var mainCtx = ctx;
+    ctx = bctx; bctx.clearRect(0, 0, W, H);
+    balloons = balloons.filter(function (b) { return b.y > -200; });
+    balloons.forEach(function (b) {
+      b.y -= b.v; b.t += 0.03;
+      var x = b.x + Math.sin(b.t) * 12, kb = b.y + b.r * 1.2;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(130,130,130,0.6)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, kb + 8);
+      ctx.bezierCurveTo(x - 8, kb + 28, x + 8, kb + 48, x, kb + 68); ctx.stroke();
+      ctx.fillStyle = b.c;
+      ctx.beginPath(); ctx.ellipse(x, b.y, b.r, b.r * 1.2, 0, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x, kb); ctx.lineTo(x - 5, kb + 8); ctx.lineTo(x + 5, kb + 8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath(); ctx.ellipse(x - b.r * 0.35, b.y - b.r * 0.4, b.r * 0.18, b.r * 0.32, 0.5, 0, 6.2832); ctx.fill();
+      ctx.restore();
+    });
+    ctx = mainCtx;
+    requestAnimationFrame(tick);
+  }
+
+  function pop() {
+    burst(0, -Math.PI / 3);
+    burst(W, -Math.PI + Math.PI / 3);
+  }
+
+  function bigPop() {
+    burst(0, -Math.PI / 3, 160);
+    burst(W, -Math.PI + Math.PI / 3, 160);
+    burst(W / 2, -Math.PI / 2, 160);
+    for (var i = 0; i < 260; i++) {
+      parts.push({
+        x: Math.random() * W, y: -20 - Math.random() * H * 0.7,
+        vx: (Math.random() - 0.5) * 3, vy: 3 + Math.random() * 3,
+        w: 6 + Math.random() * 6, h: 3 + Math.random() * 4,
+        r: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.3,
+        c: colors[(Math.random() * colors.length) | 0],
+        life: 1, d: 0.94, g: 0.12, l: 0.003
+      });
+    }
+  }
+
+  function spawnBalloon() {
+    if (document.hidden) return;
+    var small = W < 500;
+    balloons.push({
+      x: W * 0.08 + Math.random() * W * 0.84,
+      y: H + 90,
+      r: (small ? 22 : 30) + Math.random() * (small ? 10 : 14),
+      v: 1.2 + Math.random() * 1.2,
+      t: Math.random() * 6.28,
+      c: colors[(Math.random() * colors.length) | 0]
+    });
+  }
+
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    setTimeout(bigPop, 300);
+    document.addEventListener('click', pop);
+    setTimeout(function () {
+      spawnBalloon();
+      setInterval(spawnBalloon, 1000);
+    }, 1500);
+    if (!running) { running = true; requestAnimationFrame(tick); }
+  }
+})();
+</script>
+</body>
+</html>
